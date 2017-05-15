@@ -20,3 +20,15 @@ convnet = theano.tensor.nnet.conv2d(
     input_shape = (BATCH_SIZE, INPUT_CHANNELS, SCREEN_BUFFER_SIZE, SCREEN_BUFFER_SIZE),
     filter_shape = (OUTPUT_CHANNELS, INPUT_CHANNELS, FILTER_SIZE, FILTER_SIZE),
     border_mode = 'valid', subsample=(FILTER_STRIDE, FILTER_STRIDE))
+
+class ReluConv:
+
+    # Assumes square input.
+    def __init__(self, input, input_size, filter_size, stride, input_channels, output_channels, relu_leak):
+
+
+        self.filters = theano.shared(value = [[numpy.random.randn(filter_size, filter_size) for i in range(input_channels)] for i in range(output_channels)], borrow = True)
+
+        self.convnet = theano.tensor.nnet.conv2d(input, self.filters, border_mode = 'valid', subsample = (stride, stride))
+
+        self.output = theano.tensor.relu(self.convnet, relu_leak)
