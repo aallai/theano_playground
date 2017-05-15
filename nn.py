@@ -36,8 +36,8 @@ class ReluFC:
 
         self.params = [self.W, self.b]
 
-    def loss(y):
-        return T.mean((self.output - y) ** 2)
+    def loss(self, y):
+        return T.mean((self.output - y.dimshuffle(0, 'x')) ** 2)
 
 def shared_dataset(data_xy):
     data_x, data_y = data_xy
@@ -71,5 +71,36 @@ if __name__ == '__main__':
     conv_layer = ReluConv(input = x, input_size = IMAGE_SIZE, filter_size = FILTER_SIZE,
         stride = STRIDE, input_channels = 1, num_filters = NUM_FILTERS)
 
-    output_layer = ReluFC(conv_layer.flat_output, ((IMAGE_SIZE - FILTER_SIZE) / STRIDE + 1) * NUM_FILTERS, NUM_LABELS, True)
+    conv_layer_output_dim = (((IMAGE_SIZE - FILTER_SIZE) / STRIDE + 1) ** 2) * NUM_FILTERS
+
+    output_layer = ReluFC(conv_layer.flat_output, conv_layer_output_dim, 1, True)
+
+    cost = output_layer.loss(y)
+
+    params = conv_layer.params + output_layer.params
+
+    grads = T.grad(cost, params)
+
+    learning_rate = 0.15
+
+    updates = [(param, param - learning_rate * grad) for param, grad in zip(params, grads)]
+
+    train_model = theano.function( [index], cost, updates=updates,
+        givens={
+            x: train_set_x[index * MINIBATCH_SIZE: (index + 1) * MINIBATCH_SIZE].reshape((MINIBATCH_SIZE, 1, IMAGE_SIZE, IMAGE_SIZE)),
+            y: train_set_y[index * MINIBATCH_SIZE: (index + 1) * MINIBATCH_SIZE]
+        }
+    )
+
+    for i in range(len(train_set[0]) / MINIBATCH_SIZE):
+        c = train_model(i)
+
+        print "Cost at iteration {}: {}".format(i, c)
+
+    predict = theano.function([], output_layer.output, givens = {x: test_set_x.reshape((10000, 1, IMAGE_SIZE, IMAGE_SIZE))})
+
+    labels = predict()
+
+    for i in range(50):
+        print "Predicted: {}, actual: {}".format(labels[i], test_set_y.get_value()[i])
 
