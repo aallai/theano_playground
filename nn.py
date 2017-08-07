@@ -93,10 +93,9 @@ if __name__ == '__main__':
     velocities = [theano.shared(value = numpy.zeros(param.get_value().shape)) for param in params]
     grads = T.grad(cost, params)
 
-    momentum = 0.5
+    momentum = 0.3
     lr = 0.01
 
-    #updates = [(param, param - lr* grad) for param, grad in zip(params, grads)]
     updates = [(velocity, momentum * velocity + lr * grad) for velocity, grad in zip(velocities, grads)]
     updates += [(param, param - velocity) for param, velocity in zip(params, velocities)]
 
@@ -108,15 +107,14 @@ if __name__ == '__main__':
         }
     )
 
-    epochs = 10
+    epochs = 100
+
+    print "momentum: {}, lr: {}, epochs: {}, minibatch size: {}".format(momentum, lr, epochs, MINIBATCH_SIZE)
 
     for e in range(epochs):
         for i in range(len(train_set[0]) / MINIBATCH_SIZE):
-
             c = train_model(i)
             print "Average squared loss at iteration {}: {}".format(e * MINIBATCH_SIZE + i, c)
-
-    print "Total average squared loss: {}".format(total_cost())
 
     #predict = theano.function([], output_layer.output, givens = {x: test_set_x.reshape((10000, 1, IMAGE_SIZE, IMAGE_SIZE))})
     predict = theano.function([], output_layer.output, givens = { x: train_set_x[:100] })
